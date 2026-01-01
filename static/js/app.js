@@ -18,16 +18,30 @@ function generateId() {
     return Date.now().toString(36) + Math.random().toString(36).substr(2);
 }
 
-function addTodo(text) {
+function addTodo(text, dueDate) {
     const todo = {
         id: generateId(),
         text: text.trim(),
         completed: false,
+        dueDate: dueDate || null,
         createdAt: new Date().toISOString()
     };
     todos.unshift(todo);
     saveTodos();
     render();
+}
+
+function formatDate(dateString) {
+    if (!dateString) return null;
+    const date = new Date(dateString);
+    return `${date.getFullYear()}/${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getDate().toString().padStart(2, '0')}`;
+}
+
+function isOverdue(dueDate) {
+    if (!dueDate) return false;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return new Date(dueDate) < today;
 }
 
 function toggleTodo(id) {
@@ -58,7 +72,10 @@ function getFilteredTodos() {
 
 function createTodoElement(todo) {
     const li = document.createElement('li');
-    li.className = 'todo-item' + (todo.completed ? ' completed' : '');
+    let className = 'todo-item';
+    if (todo.completed) className += ' completed';
+    if (!todo.completed && isOverdue(todo.dueDate)) className += ' overdue';
+    li.className = className;
 
     const checkbox = document.createElement('input');
     checkbox.type = 'checkbox';
@@ -66,9 +83,20 @@ function createTodoElement(todo) {
     checkbox.checked = todo.completed;
     checkbox.addEventListener('change', () => toggleTodo(todo.id));
 
+    const contentDiv = document.createElement('div');
+    contentDiv.className = 'todo-content';
+
     const span = document.createElement('span');
     span.className = 'todo-text';
     span.textContent = todo.text;
+    contentDiv.appendChild(span);
+
+    if (todo.dueDate) {
+        const dueDateSpan = document.createElement('span');
+        dueDateSpan.className = 'todo-due-date';
+        dueDateSpan.textContent = formatDate(todo.dueDate);
+        contentDiv.appendChild(dueDateSpan);
+    }
 
     const deleteBtn = document.createElement('button');
     deleteBtn.className = 'delete-btn';
@@ -76,7 +104,7 @@ function createTodoElement(todo) {
     deleteBtn.addEventListener('click', () => deleteTodo(todo.id));
 
     li.appendChild(checkbox);
-    li.appendChild(span);
+    li.appendChild(contentDiv);
     li.appendChild(deleteBtn);
 
     return li;
@@ -108,13 +136,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const form = document.getElementById('todo-form');
     const input = document.getElementById('todo-input');
+    const dateInput = document.getElementById('todo-date');
 
     form.addEventListener('submit', (e) => {
         e.preventDefault();
         const text = input.value.trim();
         if (text) {
-            addTodo(text);
+            addTodo(text, dateInput.value);
             input.value = '';
+            dateInput.value = '';
         }
     });
 
